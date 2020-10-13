@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,6 +9,10 @@ from utils import *
 
 class GradientDescentNet():
     def __init__(self, args, dataloader, device):
+        self.args = args
+        self.dataloader = dataloader
+        self.device = device
+        
         self.resnet = nblock_resnet(n_residual_blocks=2).to(device)
         self.resnet = nn.DataParallel(self.resnet)
         if args.load < 0:
@@ -16,16 +21,13 @@ class GradientDescentNet():
         else:
             self.load_checkpoints()
             self.start_epoch = args.load + 1
-            
-        self.args = args
-        self.dataloader = dataloader
-        self.device = device
+        
         self.eta = torch.tensor(0.1, dtype=torch.float32, requires_grad=True, device=device)
         self.opr = Operators(device=device)
         optimizer = optim.Adam(self.resnet.parameters(), lr=args.lr, betas=(0.999, 0.999))
         self.scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.97)
         self.criterionL2 = torch.nn.MSELoss().to(device)
-    
+        
     
     def init_weights(self, m):
         nn.init.xavier_uniform_(m.weight)
@@ -72,8 +74,9 @@ class GradientDescentNet():
                     
             self.log(epoch, i)
             torch.save(self.resnet.state_dict(), f'{self.args.outdir}/ckpt/epoch{epoch}.pth')
+            vutils.save_image(beta.detach(), f'{self.args.outdir}/result_samples_epoch{epoch}.png', normalize=True)
+
             
-                    
     def log(self, epoch, i):
         print(f'[{epoch}/{self.args.epochs}][{i}/{len(self.dataloader)}] ' \
               f'eta:{self.eta.item():.4f} ' \

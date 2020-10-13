@@ -20,7 +20,7 @@ class Operators():
         if input.size()[2] != self.image_size or input.size()[3] != self.n_angles:
             raise Exception(f'forward_adjoint input dimension wrong! received {input.size()}.')
             
-        filtered_sinogram = self.radon.filter_sinogram(input)
+        filtered_sinogram = self.radon.filter_sinogram(input.permute(0,1,3,2))
         return self.radon.backprojection(filtered_sinogram)
     
 
