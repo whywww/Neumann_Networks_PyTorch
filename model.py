@@ -11,7 +11,7 @@ class nblock_resnet(nn.Module):
         model = [init_layer]
         
         # residual blocks
-        for ii in range(n_residual_blocks):
+        for _ in range(n_residual_blocks):
             block = residual_block(n_interm_c)
             model = model + [block]
             

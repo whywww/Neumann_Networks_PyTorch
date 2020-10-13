@@ -1,6 +1,7 @@
 # Neumann Networks Implementation in PyTorch
 
-Origianl Tensorflow version: https://github.com/dgilton/neumann_networks_code
+Original Tensorflow version: https://github.com/dgilton/neumann_networks_code
+
 Paper: https://arxiv.org/abs/1901.03707
 
 Unrolled Gradient Descent for CT reconstruction implemented.
