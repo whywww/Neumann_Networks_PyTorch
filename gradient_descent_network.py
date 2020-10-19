@@ -47,7 +47,6 @@ class GradientDescentNet():
     def run_block(self, beta):
         linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
         scale = torch.max(beta)
-        print(torch.min(beta))
         regulariser = self.resnet(beta/scale)  # to 0~1
         learned_component = -regulariser*scale*self.eta  # same scale back
         beta = linear_component + learned_component
