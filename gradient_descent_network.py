@@ -19,7 +19,7 @@ class GradientDescentNet():
         if args.load < 0:
             self.resnet.apply(self.init_weights)
             self.start_epoch = 0
-            self.eta = self.opr.estimate_eta().requires_grad_()
+            self.eta = self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
             print(f'initial eta estimate: {self.eta:.6f}')
         else:
             self.load_checkpoints()
@@ -37,7 +37,7 @@ class GradientDescentNet():
         self.resnet.load_state_dict(torch.load(resnet_path, map_location=self.device))
         para_path = os.path.join(self.args.outdir, 'ckpt/parameters_epoch'+str(self.args.load)+'.pth')
         paras = torch.load(para_path, map_location=self.device)
-        self.eta = paras['eta'].requires_grad_()
+        self.eta = paras['eta']  #.requires_grad_() # uncomment to train eta
         self.args.lr = paras['lr']
         print(f'Model loaded from {resnet_path} and {para_path}.')
         print(f'eta starts from {self.eta.item()}')
@@ -46,8 +46,9 @@ class GradientDescentNet():
     
     def run_block(self, beta):
         linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
-        regulariser = self.resnet(beta)
-        learned_component = -regulariser
+        scale = torch.max(beta)
+        regulariser = self.resnet(beta/scale)  # to 0~1
+        learned_component = -regulariser*scale*self.eta  # same scale back
         beta = linear_component + learned_component
         return beta
         
@@ -56,8 +57,8 @@ class GradientDescentNet():
         '''
             Train Phase
         '''
-        self.optimizer = optim.Adam([{"params":self.resnet.parameters()},
-                                     {"params":self.eta}], 
+        self.optimizer = optim.Adam([{"params":self.resnet.parameters()}],
+#                                      {"params":self.eta}], 
                                     lr=self.args.lr, betas=(0.999, 0.999))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.97)
         self.criterionL2 = torch.nn.MSELoss().to(self.device)
@@ -79,7 +80,6 @@ class GradientDescentNet():
                 self.err = self.criterionL2(beta, true_beta)
                 self.err.backward()
                 self.optimizer.step()  # update parameters
-                self.scheduler.step()  # update learning rate, disable this if no exp decay
                 
                 if i % 100 == 0:
                     self.log(epoch, i)
@@ -90,6 +90,7 @@ class GradientDescentNet():
             torch.save({'eta':self.eta, 'lr':self.scheduler.get_last_lr()[0]}, 
                        f'{self.args.outdir}/ckpt/parameters_epoch{epoch}.pth')
             vutils.save_image(beta.detach(), f'{self.args.outdir}/train_samples_epoch{epoch}.png', normalize=True)
+            self.scheduler.step()  # update learning rate, disable this if no exp decay
             
             
     def test(self, true_sinogram, eta):
@@ -110,5 +111,5 @@ class GradientDescentNet():
         print(f'[{epoch}/{self.args.epochs}][{i}/{len(self.dataloader)}] ' \
               f'lr:{self.scheduler.get_last_lr()[0]} ' \
               f'eta:{self.eta.item()} ' \
-              f'Loss:{self.err.item():.4f} ' \
+              f'Loss:{self.err.item()} ' \
              )

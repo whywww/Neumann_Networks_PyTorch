@@ -11,6 +11,8 @@ class Operators():
         self.n_angles = n_angles
         angles = np.linspace(0, np.pi, self.n_angles, endpoint=False)
         self.radon = Radon(self.image_size, angles, clip_to_circle=True)
+        self.radon_sparse = Radon(self.image_size, angles[::8], clip_to_circle=True)
+        self.n_angles_sparse = len(angles[::8])
         self.landweber = Landweber(self.radon)
         
         self.mask = torch.zeros((1,1,1,180)).to(device)
@@ -20,12 +22,14 @@ class Operators():
     # $X^\T ()$ inverse radon
     def forward_adjoint(self, input):
         # check dimension
-        if input.size()[2] != self.image_size or input.size()[3] != self.n_angles:
+        if input.size()[3] == self.n_angles:
+            return self.radon.backprojection(input.permute(0,1,3,2))
+        elif input.size()[3] == self.n_angles_sparse:
+            return self.radon_sparse.backprojection(input.permute(0,1,3,2))/self.n_angles_sparse*self.n_angles  # scale the angles
+        else:
             raise Exception(f'forward_adjoint input dimension wrong! received {input.size()}.')
+            
         
-        return self.radon.backprojection(input.permute(0,1,3,2))
-    
-
     # $X^\T X ()$
     def forward_gramian(self, input):
         # check dimension
@@ -36,9 +40,10 @@ class Operators():
         return self.radon.backprojection(sinogram)
     
 
-    # corruption model: undersample sinogram by 8
+    # Corruption model: undersample sinogram by 8
     def undersample_model(self, input):
-        return input*self.mask
+        return input[:,:,:,::8]
+#         return input*self.mask
     
     
     # Filtered Backprojection. Input siogram range = (0,1)
