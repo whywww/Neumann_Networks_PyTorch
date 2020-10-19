@@ -8,11 +8,13 @@ class Operators():
     def __init__(self, image_size, n_angles, sample_ratio, device):
         self.device = device
         self.image_size = image_size
+        self.sample_ratio = sample_ratio
         self.n_angles = n_angles
+        
         angles = np.linspace(0, np.pi, self.n_angles, endpoint=False)
         self.radon = Radon(self.image_size, angles, clip_to_circle=True)
-        self.radon_sparse = Radon(self.image_size, angles[::8], clip_to_circle=True)
-        self.n_angles_sparse = len(angles[::8])
+        self.radon_sparse = Radon(self.image_size, angles[::sample_ratio], clip_to_circle=True)
+        self.n_angles_sparse = len(angles[::sample_ratio])
         self.landweber = Landweber(self.radon)
         
         self.mask = torch.zeros((1,1,1,180)).to(device)
@@ -42,8 +44,7 @@ class Operators():
 
     # Corruption model: undersample sinogram by 8
     def undersample_model(self, input):
-        return input[:,:,:,::8]
-#         return input*self.mask
+        return input[:,:,:,::self.sample_ratio]
     
     
     # Filtered Backprojection. Input siogram range = (0,1)
