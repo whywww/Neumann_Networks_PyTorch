@@ -4,7 +4,8 @@ Original Tensorflow version: https://github.com/dgilton/neumann_networks_code
 
 Paper: https://arxiv.org/abs/1901.03707
 
-Unrolled Gradient Descent for CT reconstruction implemented.
+- Unrolled Gradient Descent for CT reconstruction implemented.
+- Neumann Network implemented.
 
 Example run command:
 
