@@ -45,7 +45,7 @@ class GradientDescentNet():
         print(f'lr starts from {self.args.lr}')
         
     
-    def run_block(self, beta,i):
+    def run_block(self, beta):
         linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
         regulariser = self.resnet(beta)
         learned_component = -regulariser*self.eta
@@ -74,8 +74,8 @@ class GradientDescentNet():
                 self.network_input *= self.eta
                 beta = self.network_input
 
-                for j in range(self.args.blocks):  # run iterations
-                    beta = self.run_block(beta,j)
+                for _ in range(self.args.blocks):  # run iterations
+                    beta = self.run_block(beta)
  
                 self.err = self.criterionL2(beta, true_beta)
                 self.err.backward()
