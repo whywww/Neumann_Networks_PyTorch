@@ -12,5 +12,6 @@ Example run command:
 CUDA_VISIBLE_DEVICES=1,2 python3 main.py \
 --bs 32 --outdir out_GD \
 --datadir data \
+--net GD \
 --load -1
 ```

@@ -48,9 +48,9 @@ class NeumannNet():
     def run_block(self, beta):
         linear_component = beta - self.eta*self.opr.forward_gramian(beta)
         regulariser = self.resnet(beta)
-        learned_component = -regulariser
+        learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
-        return linear_component
+        return beta
     
     
     def train(self):
@@ -85,7 +85,7 @@ class NeumannNet():
                 
                 if i % 100 == 0:
                     self.log(epoch, i)
-#             break
+
             self.log(epoch, i)
             
             torch.save(self.resnet.state_dict(), f'{self.args.outdir}/ckpt/resnet_epoch{epoch}.pth')
