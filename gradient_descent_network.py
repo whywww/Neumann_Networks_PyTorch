@@ -7,6 +7,7 @@ import torchvision.utils as vutils
 from model import *
 from utils import *
 
+
 class GradientDescentNet():
     def __init__(self, args, dataloader, device):
         self.args = args
@@ -44,22 +45,21 @@ class GradientDescentNet():
         print(f'lr starts from {self.args.lr}')
         
     
-    def run_block(self, beta):
+    def run_block(self, beta,i):
         linear_component = beta - self.eta*self.opr.forward_gramian(beta) + self.network_input
-        scale = torch.max(beta)
-        regulariser = self.resnet(beta/scale)  # to 0~1
-        learned_component = -regulariser*scale*self.eta  # same scale back
+        regulariser = self.resnet(beta)
+        learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
-        return beta
+        return linear_component
         
         
     def train(self):
         '''
             Train Phase
         '''
-        self.optimizer = optim.Adam([{"params":self.resnet.parameters()}],
-#                                      {"params":self.eta}], 
-                                    lr=self.args.lr, betas=(0.999, 0.999))
+        self.optimizer = optim.Adam([{"params":self.resnet.parameters()}
+#                                      ,{"params":self.eta}  # uncomment to train eta
+                                    ], lr=self.args.lr, betas=(0.999, 0.999))
         self.scheduler = optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.97)
         self.criterionL2 = torch.nn.MSELoss().to(self.device)
         
@@ -74,16 +74,16 @@ class GradientDescentNet():
                 self.network_input *= self.eta
                 beta = self.network_input
 
-                for _ in range(self.args.blocks):  # run iterations
-                    beta = self.run_block(beta)
-                
+                for j in range(self.args.blocks):  # run iterations
+                    beta = self.run_block(beta,j)
+ 
                 self.err = self.criterionL2(beta, true_beta)
                 self.err.backward()
                 self.optimizer.step()  # update parameters
                 
                 if i % 100 == 0:
                     self.log(epoch, i)
-            
+
             self.log(epoch, i)
             
             torch.save(self.resnet.state_dict(), f'{self.args.outdir}/ckpt/resnet_epoch{epoch}.pth')

@@ -5,15 +5,15 @@ from torch_radon.solvers import Landweber
 
 
 class Operators():
-    def __init__(self, image_size, n_angles, sample_ratio, device):
+    def __init__(self, image_size, n_angles, sample_ratio, device, circle=False):
         self.device = device
         self.image_size = image_size
         self.sample_ratio = sample_ratio
         self.n_angles = n_angles
         
         angles = np.linspace(0, np.pi, self.n_angles, endpoint=False)
-        self.radon = Radon(self.image_size, angles, clip_to_circle=True)
-        self.radon_sparse = Radon(self.image_size, angles[::sample_ratio], clip_to_circle=True)
+        self.radon = Radon(self.image_size, angles, clip_to_circle=circle)
+        self.radon_sparse = Radon(self.image_size, angles[::sample_ratio], clip_to_circle=circle)
         self.n_angles_sparse = len(angles[::sample_ratio])
         self.landweber = Landweber(self.radon)
         
