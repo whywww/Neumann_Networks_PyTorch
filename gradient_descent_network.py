@@ -93,11 +93,11 @@ class GradientDescentNet():
             self.scheduler.step()  # update learning rate, disable this if no exp decay
             
             
-    def test(self, true_sinogram, eta):
+    def test(self, true_sinogram):
         '''
             Test Phase (for single test image).
         '''
-        self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
+        self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
         self.network_input *= self.eta
         beta = self.network_input
 
