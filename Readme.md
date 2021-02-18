@@ -11,8 +11,6 @@ Paper: https://arxiv.org/abs/1901.03707
 
 Prereq: Reconstruction domain dataset
 
-Default: Image resized to 320x320, full-projection has 180 angles.
-
 - parallel beam
 
 ```
