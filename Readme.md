@@ -7,9 +7,11 @@ Paper: https://arxiv.org/abs/1901.03707
 - Unrolled Gradient Descent Network and Neumann Network implemented for sparse-view CT reconstruction.
 - Both parallel and fan beam supported.
 
-#### Example train command:
+Requirements: 
+- Reconstruction domain dataset
+- [TorchRadon](https://github.com/matteo-ronchetti/torch-radon)
 
-Prereq: Reconstruction domain dataset
+#### Example train command:
 
 - parallel beam
 
