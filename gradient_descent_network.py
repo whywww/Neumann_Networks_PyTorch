@@ -13,20 +13,30 @@ class GradientDescentNet():
         self.args = args
         self.dataloader = dataloader
         self.device = device
-        self.opr = Operators(args.height, args.width, 8, device=device)
+        print(f'Undersample rate is: {args.rate}')
         
-        self.resnet = nblock_resnet(n_residual_blocks=2).to(device)
-        self.resnet = nn.DataParallel(self.resnet)
-        if args.load < 0:
+        if args.beam == 'parallel':
+            self.opr = Operators(args.size, args.angles, args.rate, device=device)
+        elif args.beam == 'fan':
+            self.opr = Operators(args.size, args.angles, args.rate, device=device, beam=args.beam, det_size=args.det_size)
+        else:
+            raise Exception('projection beam type wrong!')
+        
+        self.resnet = nn.DataParallel(nblock_resnet(n_residual_blocks=2).to(device))
+        self.init_network()
+        
+        
+    def init_network(self):
+        if self.args.load < 0:
             self.resnet.apply(self.init_weights)
             self.start_epoch = 0
-            self.eta = self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
+            self.eta = self.args.eta if self.args.eta != None else self.opr.estimate_eta()  #.requires_grad_() # uncomment to train eta
             print(f'initial eta estimate: {self.eta:.6f}')
         else:
             self.load_checkpoints()
-            self.start_epoch = args.load + 1
-        
-    
+            self.start_epoch = self.args.load + 1
+            
+            
     def init_weights(self, m):
         if isinstance(m, nn.Conv2d) :
             nn.init.xavier_uniform_(m.weight)
@@ -34,14 +44,14 @@ class GradientDescentNet():
 
             
     def load_checkpoints(self):
-        resnet_path = os.path.join(self.args.outdir, 'ckpt/resnet_epoch'+str(self.args.load)+'.pth')
+        resnet_path = os.path.join(self.args.ckptdir, 'ckpt/resnet_epoch'+str(self.args.load)+'.pth')
         self.resnet.load_state_dict(torch.load(resnet_path, map_location=self.device))
-        para_path = os.path.join(self.args.outdir, 'ckpt/parameters_epoch'+str(self.args.load)+'.pth')
+        para_path = os.path.join(self.args.ckptdir, 'ckpt/parameters_epoch'+str(self.args.load)+'.pth')
         paras = torch.load(para_path, map_location=self.device)
         self.eta = paras['eta']  #.requires_grad_() # uncomment to train eta
         self.args.lr = paras['lr']
         print(f'Model loaded from {resnet_path} and {para_path}.')
-        print(f'eta starts from {self.eta.item()}')
+        print(f'eta starts from {self.eta}')
         print(f'lr starts from {self.args.lr}')
         
     
@@ -50,7 +60,7 @@ class GradientDescentNet():
         regulariser = self.resnet(beta)
         learned_component = -regulariser*self.eta
         beta = linear_component + learned_component
-        return linear_component
+        return beta
         
         
     def train(self):
@@ -67,8 +77,8 @@ class GradientDescentNet():
             for i, data in enumerate(self.dataloader):
                 self.resnet.zero_grad()
                 
-                true_sinogram = data[0].to(self.device)
-                true_beta = self.opr.FBP(true_sinogram)  # Ground Truth Reconstruction
+                true_beta = data[0].to(self.device)  # Ground Truth Reconstruction 0~1
+                true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
                 
                 self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram))
                 self.network_input *= self.eta
@@ -86,30 +96,31 @@ class GradientDescentNet():
 
             self.log(epoch, i)
             
-            torch.save(self.resnet.state_dict(), f'{self.args.outdir}/ckpt/resnet_epoch{epoch}.pth')
+            torch.save(self.resnet.state_dict(), f'{self.args.ckptdir}/ckpt/resnet_epoch{epoch}.pth')
             torch.save({'eta':self.eta, 'lr':self.scheduler.get_last_lr()[0]}, 
-                       f'{self.args.outdir}/ckpt/parameters_epoch{epoch}.pth')
-            vutils.save_image(beta.detach(), f'{self.args.outdir}/train_samples_epoch{epoch}.png', normalize=True)
+                       f'{self.args.ckptdir}/ckpt/parameters_epoch{epoch}.pth')
+            vutils.save_image(beta.detach(), f'{self.args.ckptdir}/train_samples_epoch{epoch}.png', normalize=True)
             self.scheduler.step()  # update learning rate, disable this if no exp decay
             
             
-    def test(self, true_sinogram):
+    def test(self, true_beta):
         '''
             Test Phase (for single test image).
         '''
+        true_sinogram = self.opr.forward_radon(true_beta)  # 0~1
         self.network_input = self.opr.forward_adjoint(self.opr.undersample_model(true_sinogram.to(self.device)))
         self.network_input *= self.eta
         beta = self.network_input
 
         for _ in range(self.args.blocks):  # run iterations
             beta = self.run_block(beta)
-
-        vutils.save_image(beta, f'{self.args.outdir}/test_result.png', normalize=True)
+        
+        return beta.detach()
         
             
     def log(self, epoch, i):
         print(f'[{epoch}/{self.args.epochs}][{i}/{len(self.dataloader)}] ' \
               f'lr:{self.scheduler.get_last_lr()[0]} ' \
-              f'eta:{self.eta.item()} ' \
+#               f'eta:{self.eta.item()} ' \
               f'Loss:{self.err.item()} ' \
              )
