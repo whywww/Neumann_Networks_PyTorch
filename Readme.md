@@ -7,7 +7,7 @@ Paper: https://arxiv.org/abs/1901.03707
 - Unrolled Gradient Descent Network and Neumann Network implemented for sparse-view CT reconstruction.
 - Both parallel and fan beam supported.
 
-Example train command:
+#### Example train command:
 
 Prereq: Reconstruction domain dataset
 
@@ -35,7 +35,7 @@ CUDA_VISIBLE_DEVICES=0,1 python3 main.py \
 --load -1
 ```
 
-Example test command:
+#### Example test command:
 
 - single predict
 
